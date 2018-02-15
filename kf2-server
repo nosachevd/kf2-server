@@ -1,0 +1,124 @@
+#!/bin/bash
+###
+# kf2-server - Start/Stop the Killing Floor 2 server.
+#
+# chkconfig: 2345 90 60
+# description: Service for Killing Floor 2 server
+###
+
+SERVICE="Killing Floor 2 Server"
+RETVAL=0
+
+PROCESS=`ps -ef | grep -i KFGameSteamServer.bin.x86_64 | egrep -v "grep|SCREEN" | awk '{ print $2 }'`
+SERVERBIN=`find / -name KFGameSteamServer.bin.x86_64 2> /dev/null`
+STEAMCMDBIN=`find / -name steamcmd.sh 2> /dev/null`
+SERVERDIR=`find / -name KF2Server.bat 2> /dev/null | awk '{gsub("KF2Server.bat", "");print}'`
+
+USER=kf-admin
+
+id $USER > /dev/null || USER=root 
+if [ "$USER" = root ]
+then
+	echo "kf-admin user not found, server will launch as root process"
+fi
+
+start()
+{
+	if [ -z "$PROCESS" ]
+	then
+		echo "$SERVICE is now starting"
+		service iptables stop > /dev/null
+		if [ -z "$SERVERBIN" ]
+        then
+            echo "KFGameSteamServer.bin.x86_64 not found"
+            exit 1
+        fi
+		sudo -u $USER screen -S kf2-server -d -m -c /dev/null -- sh -c $SERVERBIN kf-bioticslab
+		sleep 5s
+		PROCESS=`ps -ef | grep -i KFGameSteamServer.bin.x86_64 | egrep -v "grep|SCREEN" | awk '{ print $2 }'`
+		ps -p $PROCESS > /dev/null && echo "$SERVICE has been started" || echo "$SERVICE failed to run, check server files and configuration"
+	else
+		echo "$SERVICE appears to already be running"
+	fi
+}
+
+stop()
+{
+	if [ "$PROCESS" ]
+	then
+		echo "$SERVICE is now stopping"
+		sleep 5
+		sudo -u $USER bash << EOF
+		screen -d kf2-server > /dev/null
+		screen -S kf2-server -X stuff $'stop\n'
+		kill -15 $PROCESS > /dev/null 2>&1 && echo "$SERVICE stopped successfully" || echo "$SERVICE failed to stop, kill it manually"
+EOF
+	else
+		echo "$SERVICE is not running"
+	fi
+}
+
+status()
+{
+	if [ "$PROCESS" ]
+	then
+		echo -e "$SERVICE is \e[32mrunning\e[39m PID - $PROCESS"
+		else
+		echo -e "$SERVICE is \e[31mstopped\e[39m PID - $PROCESS"
+	fi
+}
+
+restart()
+{
+	if [ "$PROCESS" ]
+	then
+		stop
+	else
+		echo "$SERVICE was already stopped"
+	fi
+		PROCESS=`ps -ef | grep -i KFGameSteamServer.bin.x86_64 | egrep -v "grep|SCREEN" | awk '{ print $2 }'`
+		start
+}
+
+update()
+{
+	if [ -z "$STEAMCMDBIN" ]
+	then
+		echo "steamcmd.sh not found"
+        exit 1
+	fi
+	if [ "$PROCESS" ]
+	then
+		stop
+		sleep 5s
+	else
+		echo "$SERVICE was already stopped, update sequence in process"
+	fi
+		echo -e "\n ### STEAMCMD ### \n"
+		sudo -u $USER $STEAMCMDBIN +login anonymous +force_install_dir SERVERDIR +app_update 232130 +quit
+		echo -e "\n ### STEAMCMD ### \n"
+		sleep 10s
+		start
+}
+
+case $1 in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	restart)
+		restart
+		;;
+	status)
+		status
+		;;
+	update)
+		update
+		;;
+	*)
+echo $"Usage: $0 {start|stop|restart|status|update}"
+	exit 1
+esac
+exit $RETVAL
