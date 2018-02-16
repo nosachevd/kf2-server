@@ -14,12 +14,12 @@ SERVERBIN=`find / -name KFGameSteamServer.bin.x86_64 2> /dev/null`
 STEAMCMDBIN=`find / -name steamcmd.sh 2> /dev/null`
 SERVERDIR=`find / -name KF2Server.bat 2> /dev/null | awk '{gsub("KF2Server.bat", "");print}'`
 
-USER=kf-admin
+USER=kf2-admin
 
-id $USER > /dev/null || USER=root 
+id $USER > /dev/null || USER=root
 if [ "$USER" = root ]
 then
-	echo "kf-admin user not found, server will launch as root process"
+	echo "kf2-admin user not found, server will launch as root process"
 fi
 
 start()
@@ -62,9 +62,10 @@ status()
 {
 	if [ "$PROCESS" ]
 	then
-		echo -e "$SERVICE is \e[32mrunning\e[39m PID - $PROCESS"
+		echo -e "$SERVICE is \e[32mrunning\e[39m"
+
 		else
-		echo -e "$SERVICE is \e[31mstopped\e[39m PID - $PROCESS"
+		echo -e "$SERVICE is \e[31mstopped\e[39m"
 	fi
 }
 
@@ -101,6 +102,49 @@ update()
 		start
 }
 
+info()
+{
+	if [ "$PROCESS" ]
+	then
+		echo -e "\n General info:
+$SERVICE is \e[32mrunning\e[39m \nPID - $PROCESS \nOwned by user - `ps -ef | grep -i KFGameSteamServer.bin.x86_64 | egrep -v "grep|SCREEN" | awk '{ print $1 }'`
+Server running time - `ps -o etime= -p $PROCESS`\n`uptime`
+Memory consume by server - `pmap -x $PROCESS | tail -1 | awk '{ print $4/1024"mB"}'`
+Memory Free/Total - `free -m | grep '+' | awk '{ print $4}'`/`free -m | grep Mem | awk '{ print $2}'mB`
+CPU usage - `ps -p $PROCESS -o %cpu | grep -v CPU`%\n"
+		echo -e " Server information:
+Server name - `grep ServerName /home/kf-admin/kf-server/KFGame/Config/LinuxServer-KFGame.ini | awk -F'=' '{ print $2 }'`
+Game Difficulty - `grep GameDifficulty /home/kf-admin/kf-server/KFGame/Config/LinuxServer-KFGame.ini | awk -F'=' '{ print $2 }'`
+Game Length - `grep GameLength /home/kf-admin/kf-server/KFGame/Config/LinuxServer-KFGame.ini | awk -F'=' '{ print $2 }'`
+Web Admin - `grep bEnabled /home/kf-admin/kf-server/KFGame/Config/KFWeb.ini | awk -F'=' '{ print $2 }'`
+Redirect URL - `grep RedirectToURL /home/kf-admin/kf-server/KFGame/Config/LinuxServer-KFEngine.ini  | awk -F'=' '{ print $2 }'`\n"
+		echo -e " Port info:"
+		netstat -tlpen | grep $PROCESS | awk '{ print $4 }' | awk -F':' '{ print $1" "$2}' | xargs nc -nv 2> /dev/null || echo "WebAdmin disabled"
+		UDPPORT="$(netstat -ulpen | grep $PROCESS | awk '{ print $4 }' | awk -F':' '{ print $2}')"
+		while read -r line
+		do
+			nc -vz -u 0.0.0.0 $line 2> /dev/null || echo "Port $line is NOT listening"
+		done <<<"$UDPPORT"
+		nc -vz -u 0.0.0.0 123 2> /dev/null || echo "Port $line is NOT listening"
+		echo -e "\n Time info:"
+		service ntpd status
+		date
+		grep server /etc/ntp.conf | head -2 | tail -1 | awk '{print $2}' | xargs ntpdate -q
+		echo -e "\n File system info: \nServer Directoty - $SERVERDIR \nSteamCMD location - $STEAMCMDBIN"
+		df -TPh $SERVERDIR | grep -v Filesystem
+	else
+		echo -e "$SERVICE is \e[31mstopped\e[39m"
+	fi
+}
+
+info-creds()
+{
+	info
+echo -e "\n Server passwords:
+Game Password - `grep GamePassword /home/kf-admin/kf-server/KFGame/Config/LinuxServer-KFGame.ini | awk -F'=' '{ print $2 }'`
+Admin Password - `grep AdminPassword /home/kf-admin/kf-server/KFGame/Config/LinuxServer-KFGame.ini | awk -F'=' '{ print $2 }'`"
+}
+
 case $1 in
 	start)
 		start
@@ -117,8 +161,14 @@ case $1 in
 	update)
 		update
 		;;
+	info)
+		info
+		;;
+	info-creds)
+		info-creds
+		;;
 	*)
-echo $"Usage: $0 {start|stop|restart|status|update}"
+echo $"Usage: $0 {start|stop|restart|status|update|info|info-creds}"
 	exit 1
 esac
 exit $RETVAL
