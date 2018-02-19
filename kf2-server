@@ -14,7 +14,7 @@ SERVERBIN=`find / -name KFGameSteamServer.bin.x86_64 2> /dev/null`
 STEAMCMDBIN=`find / -name steamcmd.sh 2> /dev/null`
 SERVERDIR=`find / -name KF2Server.bat 2> /dev/null | awk '{gsub("KF2Server.bat", "");print}'`
 
-USER=kf2-admin
+USER=`find / -name KFGameSteamServer.bin.x86_64 | xargs ls -l | awk '{ print $3}'`
 
 id $USER > /dev/null || USER=root
 if [ "$USER" = root ]
@@ -107,7 +107,7 @@ info()
 	if [ "$PROCESS" ]
 	then
 		echo -e "\n General info:
-$SERVICE is \e[32mrunning\e[39m \nPID - $PROCESS \nOwned by user - `ps -ef | grep -i KFGameSteamServer.bin.x86_64 | egrep -v "grep|SCREEN" | awk '{ print $1 }'`
+$SERVICE is \e[32mrunning\e[39m \nPID - $PROCESS \nOwned by - `ps -ef | grep -i KFGameSteamServer.bin.x86_64 | egrep -v "grep|SCREEN" | awk '{ print $1 }' | xargs id`
 Server running time - `ps -o etime= -p $PROCESS`\n`uptime`
 Memory consume by server - `pmap -x $PROCESS | tail -1 | awk '{ print $4/1024"mB"}'`
 Memory Free/Total - `free -m | grep '+' | awk '{ print $4}'`/`free -m | grep Mem | awk '{ print $2}'mB`
