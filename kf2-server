@@ -16,10 +16,10 @@ SERVERDIR=`find / -name KF2Server.bat 2> /dev/null | awk '{gsub("KF2Server.bat",
 
 USER=`find / -name KFGameSteamServer.bin.x86_64 | xargs ls -l | awk '{ print $3}'`
 
-id $USER > /dev/null || USER=root
-if [ "$USER" = root ]
+if [ -z "$SERVERBIN" ]
 then
-	echo "kf2-admin user not found, server will launch as root process"
+    echo "KFGameSteamServer.bin.x86_64 not found"
+    exit 1
 fi
 
 start()
@@ -28,11 +28,6 @@ start()
 	then
 		echo "$SERVICE is now starting"
 		service iptables stop > /dev/null
-		if [ -z "$SERVERBIN" ]
-        then
-            echo "KFGameSteamServer.bin.x86_64 not found"
-            exit 1
-        fi
 		sudo -u $USER screen -S kf2-server -d -m -c /dev/null -- sh -c $SERVERBIN kf-bioticslab
 		sleep 5s
 		PROCESS=`ps -ef | grep -i KFGameSteamServer.bin.x86_64 | egrep -v "grep|SCREEN" | awk '{ print $2 }'`
@@ -110,12 +105,41 @@ info()
 $SERVICE is \e[32mrunning\e[39m \nPID - $PROCESS \nOwned by - `ps -ef | grep -i KFGameSteamServer.bin.x86_64 | egrep -v "grep|SCREEN" | awk '{ print $1 }' | xargs id`
 Server running time - `ps -o etime= -p $PROCESS`\n`uptime`
 Memory consume by server - `pmap -x $PROCESS | tail -1 | awk '{ print $4/1024"mB"}'`
-Memory Free/Total - `free -m | grep '+' | awk '{ print $4}'`/`free -m | grep Mem | awk '{ print $2}'mB`
+Memory Free/Total - `free -m | tail -1 | awk '{ print $4}'`/`free -m | grep Mem | awk '{ print $2}'mB`
 CPU usage - `ps -p $PROCESS -o %cpu | grep -v CPU`%\n"
+		GAMEDIFF=`grep GameDifficulty "$SERVERDIR"KFGame/Config/LinuxServer-KFGame.ini | awk -F'=' '{ print $2 }'`
+		case $GAMEDIFF in
+			0.000000)
+				GAMEDIFF="Normal(0.000000)"
+				;;
+			1.000000)
+				GAMEDIFF="Hard(1.000000)"
+				;;
+			2.000000)
+				GAMEDIFF="Suicide(2.000000)"
+				;;
+			3.000000)
+				GAMEDIFF="Hell on Earth(3.000000)"
+				;;
+			*)
+		esac
+		GAMELENGHT=`grep GameLength "$SERVERDIR"KFGame/Config/LinuxServer-KFGame.ini | awk -F'=' '{ print $2 }'`
+		case $GAMELENGHT in
+			0)
+				GAMELENGHT="4 Waves(0)"
+				;;
+			1)
+				GAMELENGHT="7 Waves(1)"
+				;;
+			2)
+				GAMELENGHT="10 Waves(2)"
+				;;
+			*)
+		esac
 		echo -e " Server information:
 Server name - `grep ServerName "$SERVERDIR"KFGame/Config/LinuxServer-KFGame.ini | awk -F'=' '{ print $2 }'`
-Game Difficulty - `grep GameDifficulty "$SERVERDIR"KFGame/Config/LinuxServer-KFGame.ini | awk -F'=' '{ print $2 }'`
-Game Length - `grep GameLength "$SERVERDIR"KFGame/Config/LinuxServer-KFGame.ini | awk -F'=' '{ print $2 }'`
+Game Difficulty - $GAMEDIFF
+Game Length - $GAMELENGHT
 Web Admin - `grep bEnabled "$SERVERDIR"KFGame/Config/KFWeb.ini | awk -F'=' '{ print $2 }'`
 Redirect URL - `grep RedirectToURL "$SERVERDIR"KFGame/Config/LinuxServer-KFEngine.ini  | awk -F'=' '{ print $2 }'`\n"
 		echo -e " Port info:"
@@ -130,8 +154,8 @@ Redirect URL - `grep RedirectToURL "$SERVERDIR"KFGame/Config/LinuxServer-KFEngin
 		service ntpd status
 		date
 		grep server /etc/ntp.conf | head -2 | tail -1 | awk '{print $2}' | xargs ntpdate -q
-		echo -e "\n File system info: \nServer Directoty - $SERVERDIR \nSteamCMD location - $STEAMCMDBIN"
-		df -TPh $SERVERDIR | grep -v Filesystem
+		echo -e "\n File system info: \nServer Directoty - $SERVERDIR \nSteamCMD location - $STEAMCMDBIN\n"
+		df -TPh $SERVERDIR
 	else
 		echo -e "$SERVICE is \e[31mstopped\e[39m"
 	fi
