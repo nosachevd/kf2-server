@@ -105,7 +105,7 @@ info()
 $SERVICE is \e[32mrunning\e[39m \nPID - $PROCESS \nOwned by - `ps -ef | grep -i KFGameSteamServer.bin.x86_64 | egrep -v "grep|SCREEN" | awk '{ print $1 }' | xargs id`
 Server running time - `ps -o etime= -p $PROCESS`\n`uptime`
 Memory consume by server - `pmap -x $PROCESS | tail -1 | awk '{ print $4/1024"mB"}'`
-Memory Free/Total - `free -m | tail -1 | awk '{ print $4}'`/`free -m | grep Mem | awk '{ print $2}'mB`
+Memory Free/Total - `free -m | grep + | awk '{ print $4}'`/`free -m | grep Mem | awk '{ print $2}'mB`
 CPU usage - `ps -p $PROCESS -o %cpu | grep -v CPU`%\n"
 		GAMEDIFF=`grep GameDifficulty "$SERVERDIR"KFGame/Config/LinuxServer-KFGame.ini | awk -F'=' '{ print $2 }'`
 		case $GAMEDIFF in
