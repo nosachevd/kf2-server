@@ -91,7 +91,7 @@ update()
 		echo "$SERVICE was already stopped, update sequence in process"
 	fi
 		echo -e "\n ### STEAMCMD ### \n"
-		sudo -u $USER $STEAMCMDBIN +login anonymous +force_install_dir SERVERDIR +app_update 232130 +quit
+		sudo -u $USER $STEAMCMDBIN +login anonymous +force_install_dir $SERVERDIR +app_update 232130 +quit
 		echo -e "\n ### STEAMCMD ### \n"
 		sleep 10s
 		start
